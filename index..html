@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>悅和醬園拼圖游戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind顏色和字體 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#E67E22',
+                        secondary: '#8B4513',
+                        accent: '#D35400',
+                        light: '#F39C12',
+                        dark: '#5D4037'
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans TC', 'sans-serif'],
+                        serif: ['Noto Serif TC', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .gradient-bg {
+                background: linear-gradient(135deg, #E67E22 0%, #8B4513 100%);
+            }
+            .gradient-orange-brown {
+                background: linear-gradient(135deg, #E67E22 0%, #8B4513 100%);
+            }
+            .puzzle-shadow {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+            }
+            .piece-hover {
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .piece-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            }
+            .confetti {
+                position: absolute;
+                width: 10px;
+                height: 10px;
+                opacity: 0;
+                animation: confetti-fall 3s ease-in-out forwards;
+            }
+            @keyframes confetti-fall {
+                0% {
+                    transform: translateY(-10px) rotate(0deg);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(100vh) rotate(720deg);
+                    opacity: 0;
+                }
+            }
+            .success-animation {
+                animation: success-scale 0.5s ease-out forwards;
+            }
+            @keyframes success-scale {
+                0% { transform: scale(0.8); opacity: 0; }
+                70% { transform: scale(1.1); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            .backface-hidden {
+                backface-visibility: hidden;
+                -webkit-backface-visibility: hidden;
+            }
+            .gift-box-inner {
+                transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transform-style: preserve-3d;
+            }
+            .gift-box:hover .gift-box-inner {
+                transform: rotateY(180deg);
+            }
+        }
+    </style>
+    
+    <!-- 導入字體 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+</head>
+
+<body class="gradient-bg min-h-screen flex flex-col items-center justify-start p-4 md:p-8 text-white font-sans">
+    <!-- 標題 -->
+    <header class="w-full max-w-3xl text-center mb-6 md:mb-10 pt-4">
+        <h1 class="text-[clamp(1.8rem,5vw,3rem)] font-serif font-bold tracking-wider">
+            悅和醬園拼圖游戲
+        </h1>
+        <p class="mt-2 text-[clamp(1rem,2vw,1.2rem)] opacity-90">
+            挑戰在一分鐘內完成六塊拼圖，贏取精美禮品！
+        </p>
+    </header>
+
+    <!-- 計時器 -->
+    <div class="w-full max-w-3xl mb-6 flex justify-center">
+        <div class="bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 text-center">
+            <p class="text-[clamp(1.2rem,3vw,1.6rem)] font-medium">
+                剩餘時間: <span id="timer" class="font-bold text-xl">60</span> 秒
+            </p>
+        </div>
+    </div>
+
+    <!-- 完整參考圖 -->
+    <div class="w-full max-w-3xl mb-6 rounded-xl overflow-hidden border-4 border-white/20">
+        <img src="https://p26-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/b61faaaa80d04e2ebd04a8cbd7369955.png~tplv-a9rns2rl98-24:720:720.png?rcl=20251112230558BD3BC08231E7E3C969DE&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1763564758&x-signature=UIO%2F8dd8dPz%2B5Xgnedm7MVBHZc0%3D" 
+             alt="完整的三瓶醬料圖" 
+             class="w-full h-auto object-cover">
+    </div>
+
+    <!-- 游戲區域 -->
+    <main class="w-full max-w-3xl flex flex-col items-center">
+        <!-- 拼圖容器 (3x2 網格) -->
+        <div id="puzzle-container" class="w-full aspect-[3/2] bg-white/5 rounded-xl p-2 md:p-4 mb-8 grid grid-cols-3 gap-2 md:gap-3 relative overflow-hidden">
+            <!-- 拼圖位置將由JS生成 -->
+        </div>
+
+        <!-- 拼圖碎片池 -->
+        <div id="pieces-container" class="w-full grid grid-cols-3 sm:grid-cols-6 gap-3 md:gap-4 mb-6">
+            <!-- 拼圖碎片將由JS生成 -->
+        </div>
+
+        <!-- 控制按鈕 -->
+        <div class="flex gap-4">
+            <button id="reset-btn" class="bg-white/20 hover:bg-white/30 transition-all py-2 px-6 rounded-full font-medium flex items-center gap-2">
+                <i class="fa fa-refresh"></i> 重新開始
+            </button>
+        </div>
+    </main>
+
+    <!-- 成功弹窗 -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all duration-500 scale-95 opacity-0" id="success-content">
+            <div class="text-center">
+                <div class="gift-box mx-auto mb-4 w-32 h-32">
+                    <div class="gift-box-inner w-full h-full relative">
+                        <div class="absolute w-full h-full gradient-orange-brown rounded-lg flex items-center justify-center transform rotateY(0deg) backface-hidden">
+                            <i class="fa fa-gift text-white text-5xl"></i>
+                        </div>
+                        <div class="absolute w-full h-full bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center transform rotateY(180deg) backface-hidden">
+                            <i class="fa fa-check text-white text-5xl"></i>
+                        </div>
+                    </div>
+                </div>
+                <h2 class="text-3xl font-bold text-primary mb-2">恭喜你！</h2>
+                <p class="text-xl text-dark mb-6">你成功完成了拼圖挑戰！</p>
+                <div class="bg-green-100 text-green-800 p-4 rounded-lg mb-6">
+                    <p class="font-bold">獲得禮品：</p>
+                    <p class="text-lg">精美醬料禮盒一套</p>
+                </div>
+                <button id="claim-btn" class="gradient-orange-brown hover:opacity-90 text-white text-lg font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    領取禮品
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 失败弹窗 -->
+    <div id="fail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4 transform transition-all duration-500 scale-95 opacity-0" id="fail-content">
+            <div class="text-center">
+                <div class="w-24 h-24 mx-auto mb-4 flex items-center justify-center rounded-full bg-red-100">
+                    <i class="fa fa-clock-o text-red-500 text-4xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-red-500 mb-2">時間到！</h2>
+                <p class="text-xl text-dark mb-6">很遺憾，你未能在規定時間內完成拼圖</p>
+                <div class="flex justify-center space-x-4">
+                    <button id="try-again-btn" class="gradient-orange-brown hover:opacity-90 text-white text-lg font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                        再試一次
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 撒花效果容器 -->
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none z-50"></div>
+
+    <script>
+        // 拼圖圖片路徑 - 使用提供的醬園產品圖
+        const puzzleImage = 'https://p11-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/9af62df1756141458d990f566b327470.png~tplv-a9rns2rl98-24:720:720.png?rcl=20251112231713C7C9E24CFA2C613042EE&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1763565433&x-signature=PtygP%2BwzUA7eDG2vfswKDmHTh5I%3D';
+        
+        // 拼圖配置
+        const GAME_CONFIG = {
+            rows: 2,
+            cols: 3
+        };
+        
+        // 游戲狀態
+        const GAME_STATE = {
+            puzzleState: Array(GAME_CONFIG.rows * GAME_CONFIG.cols).fill(null),
+            timer: null,
+            timeLeft: 60,
+            isGameActive: false,
+            correctPieces: 0
+        };
+        
+        // DOM元素
+        const puzzleContainer = document.getElementById('puzzle-container');
+        const piecesContainer = document.getElementById('pieces-container');
+        const timerElement = document.getElementById('timer');
+        const resetButton = document.getElementById('reset-btn');
+        const successModal = document.getElementById('success-modal');
+        const failModal = document.getElementById('fail-modal');
+        const successContent = document.getElementById('success-content');
+        const failContent = document.getElementById('fail-content');
+        const claimBtn = document.getElementById('claim-btn');
+        const tryAgainBtn = document.getElementById('try-again-btn');
+        const confettiContainer = document.getElementById('confetti-container');
+        
+        // 初始化游戲
+        function initGame() {
+            // 重置狀態
+            GAME_STATE.puzzleState = Array(GAME_CONFIG.rows * GAME_CONFIG.cols).fill(null);
+            clearInterval(GAME_STATE.timer);
+            GAME_STATE.timeLeft = 60;
+            GAME_STATE.isGameActive = true;
+            GAME_STATE.correctPieces = 0;
+            timerElement.textContent = GAME_STATE.timeLeft;
+            
+            // 清除效果
+            confettiContainer.innerHTML = '';
+            successModal.classList.add('hidden');
+            failModal.classList.add('hidden');
+            successContent.classList.remove('scale-100', 'opacity-100');
+            successContent.classList.add('scale-95', 'opacity-0');
+            failContent.classList.remove('scale-100', 'opacity-100');
+            failContent.classList.add('scale-95', 'opacity-0');
+            
+            // 清空容器
+            puzzleContainer.innerHTML = '';
+            piecesContainer.innerHTML = '';
+            
+            // 創建拼圖位置
+            for (let i = 0; i < GAME_CONFIG.rows * GAME_CONFIG.cols; i++) {
+                const slot = document.createElement('div');
+                slot.id = `slot-${i}`;
+                slot.className = 'bg-white/10 rounded-lg border-2 border-dashed border-white/30 transition-all';
+                slot.dataset.index = i;
+                puzzleContainer.appendChild(slot);
+            }
+            
+            // 添加拖放事件
+            addDropEvents();
+            
+            // 生成隨機順序的拼圖碎片
+            const shuffledIndices = Array.from({length: GAME_CONFIG.rows * GAME_CONFIG.cols}, (_, i) => i)
+                .sort(() => Math.random() - 0.5);
+            
+            // 創建拼圖碎片
+            shuffledIndices.forEach((index) => {
+                const piece = document.createElement('div');
+                piece.className = 'puzzle-piece rounded-lg overflow-hidden puzzle-shadow piece-hover cursor-grab';
+                piece.draggable = true;
+                piece.dataset.index = index;
+                
+                // 計算每個碎片的位置 (3x2網格)
+                const row = Math.floor(index / GAME_CONFIG.cols);
+                let col = index % GAME_CONFIG.cols;
+                
+                // 關鍵修改：交換第二列(col=1)和第三列(col=2)
+                if (col === 1) col = 2;
+                else if (col === 2) col = 1;
+                
+                // 設置背景圖片位置，顯示對應區域
+                piece.style.backgroundImage = `url(${puzzleImage})`;
+                piece.style.backgroundSize = `${GAME_CONFIG.cols * 100}% ${GAME_CONFIG.rows * 100}%`;
+                piece.style.backgroundPosition = `-${col * 100 / (GAME_CONFIG.cols - 1)}% -${row * 100 / (GAME_CONFIG.rows - 1)}%`;
+                piece.style.aspectRatio = '3/2'; // 保持圖片比例
+                
+                // 添加拖動事件
+                piece.addEventListener('dragstart', handleDragStart);
+                
+                piecesContainer.appendChild(piece);
+            });
+            
+            // 啟動計時器
+            startTimer();
+        }
+        
+        // 添加放置事件
+        function addDropEvents() {
+            const slots = document.querySelectorAll('#puzzle-container > div');
+            GAME_STATE.slots = slots;
+            
+            slots.forEach(slot => {
+                slot.addEventListener('dragover', function(e) {
+                    if (!GAME_STATE.isGameActive) return;
+                    
+                    e.preventDefault();
+                    this.classList.add('highlight', 'bg-white/20');
+                });
+                
+                slot.addEventListener('dragleave', function() {
+                    this.classList.remove('highlight', 'bg-white/20');
+                });
+                
+                slot.addEventListener('drop', function(e) {
+                    if (!GAME_STATE.isGameActive) return;
+                    
+                    e.preventDefault();
+                    this.classList.remove('highlight', 'bg-white/20');
+                    
+                    const pieceIndex = e.dataTransfer.getData('text/plain');
+                    const piece = document.querySelector(`.puzzle-piece[data-index="${pieceIndex}"]`);
+                    
+                    // 检查是否已经有碎片在这个槽位
+                    if (this.querySelector('.puzzle-piece')) {
+                        // 如果已有碎片，添加动画提示
+                        animateElement(this, {scale: 1.05, duration: 0.2, yoyo: true, repeat: 1});
+                        return;
+                    }
+                    
+                    // 移动碎片到槽位
+                    this.appendChild(piece);
+                    piece.classList.add('placed');
+                    piece.classList.remove('cursor-grab', 'piece-hover');
+                    
+                    // 检查是否放置正确
+                    checkPieceCorrectness(piece, this);
+                });
+            });
+        }
+        
+        // 拖動開始
+        function handleDragStart(e) {
+            if (!GAME_STATE.isGameActive) return;
+            e.dataTransfer.setData('text/plain', this.dataset.index);
+            setTimeout(() => this.classList.add('opacity-50'), 0);
+        }
+        
+        // 检查碎片是否放置正确
+        function checkPieceCorrectness(piece, slot) {
+            const pieceIndex = parseInt(piece.dataset.index);
+            const slotIndex = parseInt(slot.dataset.index);
+            GAME_STATE.puzzleState[slotIndex] = pieceIndex;
+            
+            if (pieceIndex === slotIndex) {
+                // 放置正确
+                piece.classList.add('correct');
+                slot.classList.add('correct', 'bg-green-500/20', 'border-green-500');
+                piece.draggable = false;
+                
+                // 播放正确动画
+                animateElement(piece, {scale: 1.05, duration: 0.3, yoyo: true, repeat: 1});
+                
+                GAME_STATE.correctPieces++;
+                
+                // 检查游戏是否完成
+                if (GAME_STATE.correctPieces === GAME_CONFIG.rows * GAME_CONFIG.cols) {
+                    endGame(true);
+                }
+            } else {
+                // 放置错误
+                animateElement(piece, {x: 10, duration: 0.1, yoyo: true, repeat: 3});
+                
+                // 2秒后将碎片返回原位
+                setTimeout(() => {
+                    if (slot.contains(piece)) {
+                        piecesContainer.appendChild(piece);
+                        piece.classList.remove('placed', 'opacity-50');
+                        piece.classList.add('cursor-grab', 'piece-hover');
+                        GAME_STATE.puzzleState[slotIndex] = null;
+                    }
+                }, 2000);
+            }
+        }
+        
+        // 簡易動畫函數
+        function animateElement(element, options) {
+            const originalTransform = element.style.transform;
+            let startTime;
+            let currentTime = 0;
+            const duration = options.duration * 1000;
+            const startX = 0;
+            const startScale = 1;
+            
+            function animate(timestamp) {
+                if (!startTime) startTime = timestamp;
+                currentTime = timestamp - startTime;
+                
+                const progress = Math.min(currentTime / duration, 1);
+                let x = 0;
+                let scale = 1;
+                
+                // 處理搖晃動畫
+                if (options.x) {
+                    const oscillation = Math.sin(progress * Math.PI * 2 * (options.repeat + 1));
+                    x = options.x * oscillation;
+                }
+                
+                // 處理縮放動畫
+                if (options.scale) {
+                    const oscillation = 1 + (options.scale - 1) * Math.sin(progress * Math.PI * (options.repeat + 1));
+                    scale = options.yoyo ? oscillation : startScale + (options.scale - startScale) * progress;
+                }
+                
+                element.style.transform = `translateX(${x}px) scale(${scale})`;
+                
+                if (currentTime < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    element.style.transform = originalTransform;
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // 創建撒花效果
+        function createConfetti() {
+            // 清除現有撒花
+            confettiContainer.innerHTML = '';
+            
+            // 生成150個彩色碎片
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#D7BDE2', '#F8C471'];
+            const totalConfetti = 150;
+            
+            for (let i = 0; i < totalConfetti; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+                
+                // 隨機顏色、大小和位置
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = `${Math.random() * 10 + 5}px`;
+                confetti.style.height = `${Math.random() * 10 + 5}px`;
+                confetti.style.left = `${Math.random() * 100}vw`;
+                confetti.style.top = `-${Math.random() * 20 + 10}px`;
+                
+                // 隨機旋轉和動畫延遲
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                confetti.style.animationDelay = `${Math.random() * 2}s`;
+                confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                
+                confettiContainer.appendChild(confetti);
+            }
+        }
+        
+        // 啟動計時器
+        function startTimer() {
+            GAME_STATE.timer = setInterval(() => {
+                GAME_STATE.timeLeft--;
+                timerElement.textContent = GAME_STATE.timeLeft;
+                
+                if (GAME_STATE.timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+        
+        // 結束游戲
+        function endGame(isSuccess) {
+            GAME_STATE.isGameActive = false;
+            clearInterval(GAME_STATE.timer);
+            
+            if (isSuccess) {
+                showSuccessModal();
+            } else {
+                showFailModal();
+            }
+        }
+        
+        // 顯示成功弹窗
+        function showSuccessModal() {
+            successModal.classList.remove('hidden');
+            
+            // 添加动画效果
+            setTimeout(() => {
+                successContent.classList.remove('scale-95', 'opacity-0');
+                successContent.classList.add('scale-100', 'opacity-100');
+                
+                // 创建庆祝效果
+                createConfetti();
+            }, 10);
+        }
+        
+        // 顯示失败弹窗
+        function showFailModal() {
+            failModal.classList.remove('hidden');
+            
+            // 添加动画效果
+            setTimeout(() => {
+                failContent.classList.remove('scale-95', 'opacity-0');
+                failContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+        
+        // 事件監聽器
+        resetButton.addEventListener('click', initGame);
+        
+        claimBtn.addEventListener('click', function() {
+            successModal.classList.add('hidden');
+            successContent.classList.remove('scale-100', 'opacity-100');
+            successContent.classList.add('scale-95', 'opacity-0');
+            
+            // 重置游戏
+            setTimeout(() => {
+                initGame();
+            }, 300);
+        });
+        
+        tryAgainBtn.addEventListener('click', function() {
+            failModal.classList.add('hidden');
+            failContent.classList.remove('scale-100', 'opacity-100');
+            failContent.classList.add('scale-95', 'opacity-0');
+            
+            // 重置游戏
+            setTimeout(() => {
+                initGame();
+            }, 300);
+        });
+        
+        // 初始化游戲
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>

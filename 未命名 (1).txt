@@ -1,0 +1,18 @@
+2. 直接打開`index.html`文件在瀏覽器中運行
+3. 或通過GitHub Pages部署後訪問
+
+## 技術棧
+
+- HTML5
+- Tailwind CSS v3（樣式框架）
+- JavaScript（交互邏輯）
+- Font Awesome（圖標庫）
+- Noto Sans TC / Noto Serif TC（中文字體）
+
+## 遊戲截圖
+
+![遊戲界面](https://p26-flow-imagex-download-sign.byteimg.com/tos-cn-i-a9rns2rl98/b61faaaa80d04e2ebd04a8cbd7369955.png~tplv-a9rns2rl98-24:720:720.png?rcl=20251112230558BD3BC08231E7E3C969DE&rk3s=8e244e95&rrcfp=8a172a1a&x-expires=1763564758&x-signature=UIO%2F8dd8dPz%2B5Xgnedm7MVBHZc0%3D)
+
+## 許可證
+
+[MIT](LICENSE)
